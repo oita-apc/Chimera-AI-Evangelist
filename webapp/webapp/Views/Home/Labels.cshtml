@@ -1,0 +1,76 @@
+﻿@* Copyright (C) 2020 - 2022 APC Inc. *@
+
+@using CorrectionWebApp.Models
+@using CorrectionWebApp.Helper
+@using System.Linq
+@model LabelsModel
+<form method="post" id="frm">
+    <div class="row">
+        <div class="col4">
+            <table class="table">
+                <thead class="thead-light">
+                    <tr>
+                        <th style="width:5%">No</th>
+                        <th style="width:40%">Labels</th>
+                        <th>&nbsp;</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var label in Model.Labels)
+                    {
+                        if (label.Id > 3) {
+                                continue;
+                        }
+                        <tr>
+                            <td>@(label.Id)</td>
+                            <td><input type="text" maxlength="15" name="[@(label.Id-1)].Name" value="@label.Name" class="form-control" style="width:200px" /></td>
+                            <td>
+                                &nbsp;
+                                <input type="hidden" name="[@(label.Id-1)].Id" value="@label.Id" />
+                                <input type="hidden" name="[@(label.Id-1)].OrderNo" value="@label.OrderNo" />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="col4">
+            <table class="table">
+                <thead class="thead-light">
+                    <tr>
+                        <th style="width:5%">No</th>
+                        <th style="width:40%">Labels</th>
+                        <th>&nbsp;</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var label in Model.Labels)
+                    {
+                        if (label.Id <= 3)
+                        {
+                            continue;
+                        }
+                        <tr>
+                            <td>@(label.Id)</td>
+                            <td><input type="text" maxlength="15" name="[@(label.Id-1)].Name" value="@label.Name" class="form-control" style="width:200px" /></td>
+                            <td>
+                                &nbsp;
+                                <input type="hidden" name="[@(label.Id-1)].Id" value="@label.Id" />
+                                <input type="hidden" name="[@(label.Id-1)].OrderNo" value="@label.OrderNo" />
+                            </td>
+                        </tr>
+                    }
+                    <tr>
+                        <td>&nbsp;</td>
+                        <td>
+                            <button type="submit" class="btn btn-primary" style="width:80px">Save</button>
+                        </td>
+                        <td>
+                            &nbsp;
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</form>

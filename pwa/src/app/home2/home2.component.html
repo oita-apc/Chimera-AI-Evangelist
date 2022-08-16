@@ -1,0 +1,153 @@
+<!-- Copyright (C) 2020 - 2022 APC Inc. -->
+<div class="example-container">
+
+<mat-toolbar color="primary" class="example-toolbar">
+    <button mat-icon-button (click)="sidenav.toggle()"><mat-icon>menu</mat-icon></button>
+    <h1>Chimera AI Evangelist</h1>
+    <span class="toolbar-spacer"></span>
+    <button mat-button (click)="logout()">Logout</button>
+  </mat-toolbar> 
+  <mat-sidenav-container class="example-sidenav-container">
+
+    <nav mat-tab-nav-bar class="mat-elevation-z8" >
+    <a
+      mat-tab-link
+      *ngFor="let link of navLinks"
+      routerLink="{{ link.location }}"
+      routerLinkActive
+      #rla="routerLinkActive"
+      [active]="rla.isActive"
+    >
+      <mat-icon>{{ link.icon }}</mat-icon>
+      <span style="margin-left:5px;">{{ link.label | uppercase }}</span>
+    </a>
+  </nav>  
+<div class="mat-card-cvr" style="margin-top:20px;">
+    <mat-card>
+            Open Camera to take a picture and upload
+            <mat-card-actions>
+                <div class="spinner-wrapper">
+                    <button mat-button color="primary" (click)="fileInput.click()">
+                        <mat-icon>add_a_photo</mat-icon>
+                        OPEN CAMERA
+                    </button>
+                    <input hidden (change)="onFileSelected0()"  #fileInput 
+                        accept="image/*" capture="camera" type="file" id="file">
+                    <mat-spinner  
+                        mode="indeterminate" 
+                        *ngIf="uploader0.totalFiles > 0 && uploader0.uploadFinishCount < uploader0.totalFiles "
+                        [color]=" uploader0.errorCount == 0 ? 'primary' : 'warn'" 
+                        [diameter]="25"></mat-spinner>
+                </div>
+                <button *ngIf="uploader0.errorCount > 0" mat-button color="warn" (click)="retry0()">
+                    <mat-icon>autorenew</mat-icon>
+                    Retry to upload error file(s)
+                </button>
+                
+                <div>
+                    <span 
+                        *ngIf="uploader0.successCount > 0" 
+                        style="margin-right:10px; color:#3f51b5">
+                        Success:{{uploader0.successCount}} file(s)
+                    </span> 
+                    <span 
+                        *ngIf="uploader0.errorCount > 0" 
+                        style="color: red; margin-right:10px">
+                        Error:{{uploader0.errorCount}} file(s). Please press [Retry] above when already connected to the internet.
+                    </span> 
+                </div>
+                <div>
+                    <span *ngIf="uploader0.skipCount > 0" >
+                        Skip:{{uploader0.skipCount}} file(s) already uploaded before
+                    </span>
+                </div>
+                <div *ngIf="uploader0.totalFiles > 0">
+                    <div style="float: right;">
+                        <span>Try to upload {{uploader0.totalFiles}} file(s) - {{ uploader0.uploadProgress }}% </span>
+                    </div>
+                    <div class="progress">                        
+                        <mat-progress-bar mode="determinate" value={{uploader0.uploadProgress}}></mat-progress-bar>
+                    </div>
+                </div>                                
+            </mat-card-actions>
+    </mat-card>    
+</div>
+<div class="mat-card-cvr" style="margin-top:20px;">
+    <mat-card>
+            Open Album to choose image file(s) for upload
+            <mat-card-actions>
+                <div class="spinner-wrapper">
+                    <button mat-button color="primary" (click)="fileInputs.click()">
+                        <mat-icon>collections</mat-icon>
+                        OPEN ALBUM
+                    </button>
+                    <input hidden (change)="onFileSelected1()" multiple #fileInputs 
+                        accept="image/x-png,image/jpeg" type="file" id="files">
+                    <button mat-button color="primary"
+                        [disabled]="!btnUploadEnabled1"
+                        (click)="uploadFiles1()">
+                            <mat-icon>file_upload</mat-icon>
+                            UPLOAD
+                            <span *ngIf="selectedFiles1 && selectedFiles1.length > 0">
+                                {{selectedFiles1.length}} file(s)
+                            </span>
+                    </button>              
+                    <mat-spinner  
+                        mode="indeterminate" 
+                        *ngIf="uploader1.totalFiles > 0 && uploader1.uploadFinishCount < uploader1.totalFiles "
+                        [color]=" uploader1.errorCount == 0 ? 'primary' : 'warn'" 
+                        [diameter]="25"></mat-spinner>                    
+                </div>
+                <button *ngIf="uploader1.errorCount > 0" mat-button color="warn" (click)="retry1()">
+                    <mat-icon>autorenew</mat-icon>
+                    Retry to upload error file(s)
+                </button>
+                
+                <div>
+                    <span 
+                        *ngIf="uploader1.successCount > 0" 
+                        style="margin-right:10px; color:#3f51b5">
+                        Success:{{uploader1.successCount}} file(s)
+                    </span> 
+                    <span 
+                        *ngIf="uploader1.errorCount > 0" 
+                        style="color: red; margin-right:10px">
+                        Error:{{uploader1.errorCount}} file(s). Please press [Retry] above when already connected to the internet.
+                    </span> 
+                </div>
+
+                <div>
+                    <span *ngIf="uploader1.skipCount > 0" >
+                        Skip:{{uploader1.skipCount}} file(s) already uploaded before
+                    </span>
+                </div>
+                <div *ngIf="uploader1.totalFiles > 0">
+                    <div style="float: right;">
+                        <span>Try to upload {{uploader1.totalFiles}} file(s) - {{ uploader1.uploadProgress }}% </span>
+                    </div>
+                    <div class="progress">                        
+                        <mat-progress-bar mode="determinate" value={{uploader1.uploadProgress}}></mat-progress-bar>
+                    </div>
+                </div> 
+            </mat-card-actions>
+    </mat-card>    
+</div>
+
+<mat-sidenav #sidenav>
+    <mat-nav-list>
+      <a
+      mat-list-item
+      *ngFor="let link of sideLinks"
+      routerLink="{{ link.location }}"
+      routerLinkActive
+      #rla="routerLinkActive"
+      [active]="rla.isActive"
+    >
+      <mat-icon>{{ link.icon }}</mat-icon>
+      <span style="margin-left:5px;">{{ link.label | uppercase }}</span>
+    </a>
+    </mat-nav-list>
+  </mat-sidenav>
+</mat-sidenav-container>
+
+</div>

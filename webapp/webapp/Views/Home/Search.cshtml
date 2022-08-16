@@ -1,0 +1,104 @@
+﻿@* Copyright (C) 2020 - 2022 APC Inc. *@
+
+@using CorrectionWebApp.Models
+@using CorrectionWebApp.Helper
+@using System.Linq
+@model SearchImage
+<form method="get" id="frmSearch">
+    <input type="hidden" name="Submitted" value="true" />
+    <input type="hidden" name="SearchStatus" value="ALL" />
+    <div class="form-group row mb-1 no-gutters">        
+        <label for="DateStartStr" class="col-auto col-form-label margin-right">Date</label>
+        <div class="col-auto">
+            <div class="start_date input-group">
+                <input class="form-control start_date" type="text" asp-for="DateStartStr" style="width:120px">
+                <div class="input-group-append">
+                    <span class="fa fa-calendar input-group-text start_date_calendar" aria-hidden="true"></span>
+                </div>
+            </div>
+        </div>
+        <span>~</span>
+        <div class="col-auto mr-auto">
+            <div class="end_date input-group">
+                <input class="form-control end_date" type="text" asp-for="DateEndStr" style="width:120px">
+                <div class="input-group-append">
+                    <span class="fa fa-calendar input-group-text end_date_calendar" aria-hidden="true"></span>
+                </div>
+            </div>
+        </div>
+        <div class="col-auto margin-right">
+            <button type="button" class="btn btn-primary" onClick="document.location.reload(true);">Refresh</button>
+        </div>
+        <div class="col-auto margin-right">
+            <button type="button" onclick="doClear();" class="btn btn-primary"> Clear </button>
+        </div>
+        <div class="col-auto margin-right text-right">
+            <button type="button" onclick="doSubmit();" class="btn btn-primary"> Search </button>
+        </div>
+    </div>
+    <div class="form-group row  mb-1 no-gutters">
+        <label class="col-auto col-form-label margin-right">Labels</label>
+        <div class="col-auto  margin-right">
+            <select class="form-control" asp-for="SearchAttribute" style="width:250px" data-placeholder=" ">
+                <option value="0">ALL</option>
+                @foreach (var category in Model.AttributeList.AttributeList)
+                    foreach (var item in category.Attributes)
+                    {
+                        <option value="@item.Id">@item.Name</option>
+                    }
+                }
+            </select>
+        </div>
+        <label class="col-auto col-form-label margin-right">User</label>
+        <div class="col-auto mr-auto">
+            <input class="form-control" type="text" asp-for="SearchPhotographer" style="width:250px">
+        </div>
+        <label asp-for="ViewMode" class="col-auto col-form-label margin-right">View Mode</label>
+        <div class="col-auto margin-right">
+            <select class="form-control" asp-for="ViewMode" onchange="changeViewMode();">
+                <option value="0">LIST</option>
+                <option value="1">THUMBNAIL</option>
+            </select>
+        </div>
+        <label asp-for="OrderByField" class="col-auto col-form-label margin-right">Order By</label>
+        <div class="col-auto margin-right">
+            <select class="form-control" asp-for="OrderByField" onchange="changeOrderBy();">
+                <option value="@((int) OrderByEnum.ImageNo)">@OrderByEnum.ImageNo.GetDescription()</option>
+                <option value="@((int) OrderByEnum.ImageDate)">@OrderByEnum.ImageDate.GetDescription()</option>
+            </select>
+        </div>
+        <label asp-for="PageSize" class="col-auto col-form-label margin-right">Page Size</label>
+        <div class="col-auto margin-right">
+            <select class="form-control" asp-for="PageSize" onchange="changePageSize();">
+                @if (Model.ViewMode == 1)
+                {
+                    @foreach (var val in ImageListModel.ThumbnailPageSize)
+                    {
+                        if (val == Model.PageSize)
+                        {
+                            <option value="@val" selected>@val</option>
+                        }
+                        else
+                        {
+                            <option value="@val">@val</option>
+                        }
+                    }
+                }
+                else
+                {
+                    @foreach (var val in ImageListModel.ListPageSize)
+                    {
+                        if (val == Model.PageSize)
+                        {
+                            <option value="@val" selected>@val</option>
+                        }
+                        else
+                        {
+                            <option value="@val">@val</option>
+                        }
+                    }
+                }
+            </select>
+        </div>
+    </div>
+</form>

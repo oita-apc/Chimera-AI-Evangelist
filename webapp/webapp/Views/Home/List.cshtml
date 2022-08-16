@@ -1,0 +1,122 @@
+﻿@* Copyright (C) 2020 - 2022 APC Inc. *@
+
+@using CorrectionWebApp.Models
+@using CorrectionWebApp.Helper
+@using System.Linq
+@model ImageListModel
+@{
+    Model.SearchImage.AttributeList = Model.AttributeList;
+
+}
+<partial name="Search.cshtml" model="Model.SearchImage" />
+@if (Model.TotalCount > 0)
+{
+    <div class="row no-gutters align-items-center">
+        <div class="col-auto mr-auto" @Html.Raw(Model.SearchImage.ViewMode == 0 || Model.IsAdministrator ? "style=\"margin-bottom:5px\"" : "")>
+            <partial name="ImageListPaging.cshtml" />        
+        </div>
+        <div class="col-auto text-right align-items-center">
+            <span class="margin-right">Total Records: <strong>@Model.TotalCount.ToString("#,##0")</strong></span>
+        </div>
+    </div>    
+    if(Model.SearchImage.ViewMode == 0) {
+        <partial name="ImageList.cshtml" />
+    } else
+    {
+        <partial name="ImageThumbnails.cshtml" />
+    }
+} else
+{
+    <div class="row" style="">
+        <div class="col-12 mt-3 text-center">
+            NO DATA
+        </div>
+    </div>
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/lib/bootstrap-datepicker/bootstrap-datepicker.min.css" />
+    <link href="~/lib/multi-select-tree-dropdown/dropdowntree.css" rel="stylesheet">
+
+    <style>
+        [data-href] {
+            cursor: pointer;
+        }
+        .col-form-label {
+            padding-left:0px !important;
+            padding-right:0px !important;
+        }
+
+        .dropdowntree-name {
+            color: #495057;
+            background-color: #fff;
+            background-clip: padding-box;
+            border: 1px solid #ced4da;
+            border-radius: .25rem;
+            padding: .375rem .75rem;
+            font-size: 1rem;
+            font-weight: 400;
+            line-height: 1.5;
+        }
+    </style>
+}
+
+@section Scripts
+{
+    <script src="~/lib/bootstrap-datepicker/bootstrap-datepicker.min.js"></script>
+    <script src="~/lib/bootstrap-datepicker/bootstrap-datepicker.ja.min.js"></script>
+    <script src="~/lib/multi-select-tree-dropdown/dropdowntree.js"></script>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $("#DateStartStr").datepicker({
+                format: "yyyy/mm/dd",
+                language: 'ja'
+            });
+            $("#DateEndStr").datepicker({
+                format: "yyyy/mm/dd",
+                language: 'ja'
+            });
+            $('.chosen-select').chosen();            
+
+        });
+        function openDetail(imageId) {
+            window.location.href = "@Url.Action("Detail", "Home")?id=" + imageId;
+        }
+
+        function changeViewMode() {
+            doSubmit();
+        }
+
+        function changePageSize() {
+            doSubmit();
+        }
+
+        function changeOrderBy() {
+            doSubmit();
+        }
+
+        function doSubmit() {            
+
+            $("#frmSearch").submit();
+        }
+        
+
+        function doClear() {
+            $("#SearchAttribute").val("0");
+            $("#SearchPhotographer").val("");
+            $("#DateStartStr").val("");
+            $("#DateEndStr").val("");
+            $("#SearchComment").val("");
+            
+
+            $.get("@Url.Action("DoClear", "Home")", function (data, status) {
+                console.log("clear result: " + data + " Status: " + status);
+            });
+        }
+
+        function backToImageList() {
+
+        }
+    </script>
+}

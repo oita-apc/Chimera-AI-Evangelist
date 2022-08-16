@@ -1,0 +1,153 @@
+﻿@* Copyright (C) 2020 - 2022 APC Inc. *@
+
+@using CorrectionWebApp.Models
+@using CorrectionWebApp.Helper
+@using System.Linq
+@model SummaryModel
+
+@{
+    var maxCols = 2;
+    var numberOfRows = Math.Ceiling(1.0 * Model.AttributeSummaries.Count / maxCols);
+}
+
+@for (var row = 1; row <= numberOfRows; row++)
+{
+    <div class="row">
+    @for (var col = 1; col <= maxCols; col++)
+    {
+        var index = (row - 1) * maxCols + col;
+        if (index <= Model.AttributeSummaries.Count)
+        {
+            var category = Model.AttributeSummaries[index-1];
+            <div class="col-2 table-responsive">
+                <h5>Image Summary by @category.Name</h5>
+                <table class="table table-striped table-sm">
+                    <thead>
+                        <tr>
+                            <th>Label</th>
+                            <th style="text-align:right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var (attributeSummary, no) in category.Attributes.Select((item, index) => (item, index)))
+                        {
+                            <tr>
+                                <td>@attributeSummary.AttributeName</td>
+                                <td style="text-align:right">
+                                    @attributeSummary.TotalImage.ToString("#,##0")
+                                    <input type="hidden" name="attrData@{@no}" value="@attributeSummary.TotalImage" />
+                                    <input type="hidden" name="attrLabel@{@no}" value="@attributeSummary.AttributeName" />
+                                </td>
+                            </tr>
+                            
+                        }                
+                    </tbody>
+                </table>
+                <input type="hidden" name="labelSize" value="@category.Attributes.Count" />
+            </div>
+            <!-- /.col -->
+        }
+    }
+        <div class="col-4">
+            <canvas id="myPieChart"></canvas>
+        </div>
+    </div>
+}
+
+
+<div class="row">
+    <div class="col-8 table-responsive">
+        <h5>Last Training Status</h5>
+        <table class="table table-striped table-sm">
+            <thead>
+                <tr>
+                    <th>USER</th>
+                    <th>STATUS</th>
+                    <th>START-DATE</th>
+                    <th>END-DATE</th>
+                    <th>MODEL-NAME</th>
+                    <th>DATASET</th>
+                    <th>ACTIVE</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach(var trainingStatus in Model.LastTrainingStatus) { 
+                <tr>
+                    <td>@trainingStatus.UserName</td>
+                    <td>@trainingStatus.Status</td>
+                    <td>@trainingStatus.StartDate.ToStringJpn()</td>
+                    <td>@trainingStatus.FinishDate.ToStringJpn()</td>
+                    <td>@trainingStatus.getModelType()</td>
+                    <td>@trainingStatus.DatasetName</td>
+                    <td>
+                        @if(trainingStatus.IsTrained && !trainingStatus.IsActive)
+                        { 
+                            <button type="button" onclick="activateDataset('@trainingStatus.DatasetId');" class="btn btn-primary">ACTIVATE</button>
+                        } else if (trainingStatus.IsActive)
+                        {
+                            <span class="badge badge-warning" style="padding-left:15px; padding-right:15px; padding-top:10px; padding-bottom:10px">ACTIVE</span>
+                        }
+                    </td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts
+{
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.js"></script>
+    <script type="text/javascript">
+
+        var colors = [
+            "#ffa3d1",
+            "#d1a3ff",
+            "#a3d1ff",
+            "#a3ffd1",
+            "#d1ffa3",
+            "#ffd1a3"
+        ];
+
+        var datas = new Array();
+        var labels = new Array();
+        var size = $('input:hidden[name="labelSize"]').val();
+
+        for(var i = 0; i < size; i++)
+        {
+            datas.push($('input:hidden[name="attrData' + i + '"]').val());
+            labels.push($('input:hidden[name="attrLabel' + i + '"]').val());
+        }
+
+        var ctx = document.getElementById("myPieChart");
+        var myPieChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    backgroundColor: colors,
+                    data: datas
+                }]
+            },
+            options: {
+                title: {
+                    display: false,
+                    text: 'Image Summary by Label'
+                },
+                legend : {
+                    display: true,
+                    onClick: function (e, el) {
+                        return false ;
+                    }
+                }
+            }
+        });
+
+        function activateDataset(datasetId) {
+            console.log("activate datasetId:" + datasetId);
+            $.post("@Url.Action("activateDataset", "Home")", { datasetId: datasetId }, function (data2, status) {
+                location.reload();
+            });
+        }
+    </script>
+}

@@ -1,0 +1,52 @@
+<!-- Copyright (C) 2020 - 2022 APC Inc. -->
+
+<mat-toolbar color="primary">
+    <h1>
+      Image Collection
+    </h1>  
+    <span class="toolbar-spacer"></span>
+    <button mat-button (click)="logout()">Logout</button>
+  </mat-toolbar>  
+<div class="mat-card-cvr">
+    <mat-card style="margin-top:20px;">
+            <mat-card-content>
+                Open Camera to take a picture and upload
+            </mat-card-content>
+            <mat-card-actions>
+                <div>
+                    <button mat-button color="primary" (click)="fileInput.click()">
+                        <mat-icon>camera_alt</mat-icon>
+                        OPEN CAMERA
+                    </button>
+                    <input hidden (change)="onFileSelected()" #fileInput 
+                        accept="image/*" capture="camera" type="file" id="file">
+                    <button *ngIf="progressInfos.length > 0 && progressInfos[0].error" mat-button color="warn" (click)="retry()">
+                        <mat-icon>autorenew</mat-icon>
+                        Retry
+                    </button>
+                </div>
+                    <div *ngFor="let progressInfo of progressInfos">
+                        <div style="float: right;">
+                            <span> ({{ progressInfo.value }}%) </span>
+                            <span *ngIf="progressInfo.error" style="color: red;" >ERROR</span>
+                        </div>
+                        <div class="progress">                        
+                            <mat-progress-bar mode="determinate" value={{progressInfo.value}}></mat-progress-bar>
+                        </div>
+                    </div>  
+            </mat-card-actions>
+    </mat-card>    
+</div>
+<div class="mat-card-cvr">
+    <mat-card style="margin-top:20px;">
+            <mat-card-content>
+                Open Uploader screen to upload multiple images.
+            </mat-card-content>
+            <mat-card-actions>
+                <button mat-button color="primary" (click)="openUploader()">
+                    <mat-icon>cloud_upload</mat-icon>
+                    OPEN UPLOADER
+                </button>
+            </mat-card-actions>
+    </mat-card>    
+</div>

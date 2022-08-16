@@ -1,0 +1,400 @@
+﻿@* Copyright (C) 2020 - 2022 APC Inc. *@
+
+@using CorrectionWebApp.Models
+@using CorrectionWebApp.Helper
+@using System.Linq
+@using Microsoft.Extensions.Configuration
+@inject IConfiguration Configuration
+@model DetailModel
+@{
+    var datasetType = Model.DatasetType;
+}
+<div class="row">
+    <div class="col-auto mr-auto">
+        <b>(@Model.ImageNo)</b><span> @Model.CreatedDate.ToStringJpn() @*(@(Model.Width)x@(Model.Height))*@</span>
+        <span> by [<strong>@Model.UserName</strong>]</span>
+    </div>
+    <div class="col-auto margin-right">
+        <button type="button" class="btn btn-primary" onClick="document.location.reload(true);">Refresh</button>
+    </div>
+    <div class="col-auto">
+        <button type="button" class="btn btn-primary" onclick="backToImageList();">Goto Image List Screen</button>
+    </div>
+</div>
+<form method="post" id="frm">
+    <input type="hidden" asp-for="Id" />
+    <input type="hidden" name="imgno" value="@Model.ImageNo" />
+    <input type="hidden" asp-for="Status" />
+    <input type="hidden" asp-for="DatasetId" />
+    <div class="form-group row mb-1 no-gutters">
+        @if (datasetType == Const.IMAGE_CLASSIFICATION)
+            {
+        <label class="col-auto col-form-label margin-right">Labels</label>
+        <div class="col-auto margin-right">
+            <select class="form-control" asp-for="Attribute" style="width:250px" data-placeholder=" ">
+                <option></option>
+                @foreach (var category in Model.AttributeList.AttributeList)
+                    foreach (var item in category.Attributes)
+                    {
+                        <option value="@item.Id">@item.Name</option>
+                        }
+                }
+            </select>
+        </div>
+            }
+        <div class="col-auto mr-auto" style="margin-left:200px">
+            <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#confirm-delete">Delete</button>
+        </div>
+    </div>
+</form>
+@if (datasetType == Const.INSTANCE_SEGMENTATION)
+    {
+<div class="row">
+    <div class="col-3">
+        <button type="button" id="btnActivateSelectionMode" class="btn btn-primary">Make Selection</button>
+        <button type="button" id="btnCreatePolygon" class="btn btn-primary" style="display:none">Automatic polygon <span id="autopolygon-spinner" class="spinner-border spinner-border-sm" style="display:none"></span></button>
+    </div>
+</div>
+    }
+<div class="row mb-3 mt-3">
+    <div class="col-auto align-self-center mr-1 pr-1 ml-1 pl-1">
+        @if (Model.PrevImageId != null)
+        {
+            <a href="@Url.Action("Detail","Home", new { id = Model.PrevImageId.Value})" class="btn btn-light">&lt;&lt;</a>
+        }
+        else
+        {
+            <span>&nbsp;</span>
+        }
+    </div>
+    <div class="col-10 ml-0 pl-0 mr-0 pr-0">
+        <div class="row">
+            <span class="text-danger" id="textNotDetect" style="display: none;">can not detect any object</span>
+        </div>
+        <img src="@Url.Action("Index","Image", new { f = Model.ImageFileName })" class="img-fluid" style="max-height:580px" id="image" alt="">
+    </div>
+    <div class="col-auto align-self-center ml-1 pl-1 mr-1 pr-1">
+        @if (Model.NextImageId != null)
+        {
+            <a href="@Url.Action("Detail","Home", new { id = Model.NextImageId.Value})" class="btn btn-light align-self-center">&gt;&gt;</a>
+        }
+        else
+        {
+            <span>&nbsp;</span>
+        }
+    </div>
+</div>
+
+<div class="modal fade" id="confirm-delete" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5>Delete Confirmation</h5>
+            </div>
+            <div class="modal-body">
+                <span>Are you sure to delete this image?</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <button class="btn btn-danger btn-ok" onclick="remove();">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/lib/annotorious/annotorious.min.css" />
+}
+
+@section Scripts
+{
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="~/lib/annotorious/annotorious.min.js"></script>
+    <script src="~/lib/annotorious/annotorious-shape-labels.min.js"></script>
+    <script src="~/lib/annotorious/lodash.js"></script>
+    <script src="~/lib/annotorious/recogito-select-widget.js" asp-append-version="true"></script>
+    <script src="~/lib/annotorious/w3cannotationobjecttemplate.js" asp-append-version="true"></script>
+    <script src="~/lib/annotorious/annotorious-better-polygon.js"></script>
+    <script src="~/lib/uuid/uuidv4.min.js"></script>
+    <script type="text/javascript">
+        var client = {};
+        var prefixTopic = "@(Configuration["MqttClient:PrefixTopic"])";
+        var annotationEnable = false;
+        var numberOfAnnotation = 0;
+        var anno;
+        var filename = "@(Model.ImageFileName)";
+        var datasetType = "@datasetType";
+        var attributeAll = [@(Html.Raw(String.Join(",", Model.AttributeAll.Where(x => !String.IsNullOrWhiteSpace(x.Name)).Select(x => "'" + x.Name + "'"))))];
+        var isWaitingBGRemovalResponse = false;
+        var BGRemovalResponseTimeout;
+        $(document).ready(function () {
+            if (datasetType == '@Const.INSTANCE_SEGMENTATION') {
+                // An mqtt variable will be initialized globally
+                setupMqtt();
+
+                $('#btnActivateSelectionMode').click(() => {
+                    activateSelection();
+                });
+                $('#btnCreatePolygon').click(() => {
+                    $("#autopolygon-spinner").show();
+                    //send selection data to server
+                    var selection = anno.getSelected();
+                    anno.cancelSelected();
+                    anno.readonly = true;
+                    console.log("selection --> " + JSON.stringify(selection));
+                    var xywh = selection.target.selector.value.substr('xywh=pixel:'.length);
+                    console.log("xywh --> " + xywh);
+                    var clientId = client.options.clientId;
+                    var cmdCommand = prefixTopic + '/backgroundremoval/request/' + filename + '/' + clientId;
+                    console.log('cmdCommand --> ' + cmdCommand);
+                    client.publish(cmdCommand, xywh);
+                    isWaitingBGRemovalResponse = true;
+                    BGRemovalResponseTimeout = setTimeout(() => {
+                        if (isWaitingBGRemovalResponse) {
+                            console.log('republish cmdCommand just previous one is failed --> ' + cmdCommand);
+                            client.publish(cmdCommand, xywh);
+                        }
+                    }, 10000);
+                });
+            }
+
+            $('.chosen-select').chosen();
+            @if(Model.Latitude != null && Model.Longitude != null)
+            {
+                <text>
+            showLocation('@Model.Latitude', '@Model.Longitude');
+                </text>
+            }
+
+            @if (datasetType == Const.INSTANCE_SEGMENTATION || datasetType == Const.OBJECT_DETECTION)
+            {
+                <text>
+                var img = document.getElementById("image");
+                if (img.complete) {
+                    console.log("image is complete");
+                    setupAnnotation.call(img);
+                }
+                else {
+                    console.log("image is not complete");
+                    img.onload = setupAnnotation;
+                }
+                </text>
+            } else
+            {
+                <text>
+                $('[id=Attribute]').change(function(){
+                    var id = $('input:hidden[id="Id"]').val();
+                    var status = $('input:hidden[id="Status"]').val();
+                    var attribute = $('[id=Attribute]').val();
+                    $.post("@Url.Action("ChangeLabel", "Home")", { id : id, attribute : attribute, status : status, datasetId : @Model.DatasetId } , function (data, status) {
+                        console.log("change result: " + data + " Status: " + status);
+                    });
+                });
+                </text>
+            }
+        });
+
+        var setupAnnotation = function () {
+            anno = Annotorious.init({
+                image: 'image',
+                // Add the formatter provided by the plugin shape label https://github.com/recogito/recogito-client-plugins/tree/main/plugins/annotorious-shape-labels
+                formatter: Annotorious.ShapeLabelsFormatter(),
+                widgets: [
+                    { widget: ColorSelectorWidget, options: attributeAll}
+                ]
+            });
+            var loadAnnotationUrl = "/api/AnnotatorHelper/GetAnnotations?imageId=" + "@Model.Id" + "&datasetId=" + "@Model.DatasetId";
+            anno.loadAnnotations(loadAnnotationUrl).then(function (annotations) {
+                console.log(JSON.stringify(annotations));
+                numberOfAnnotation = annotations.length;
+            });
+
+            setupAnnotationCallback();
+
+        }
+
+        function clearBGRemovalResponseTimeout() {
+            if (BGRemovalResponseTimeout)
+                clearTimeout(BGRemovalResponseTimeout);
+        }
+
+        function setupAnnotationCallback() {
+            if (anno) {
+                if (datasetType == '@Const.INSTANCE_SEGMENTATION') {
+                    anno.setDrawingTool('polygon');
+                    // Init better-pollygon plugin
+                    Annotorious.BetterPolygon(anno);
+                    anno.on('createSelection', createSelection);
+
+                    deactivateSelection();
+                } else {
+                    anno.setDrawingTool('rect');
+                }
+                anno.on('createAnnotation', createAnnotation);
+                anno.on('deleteAnnotation', deleteAnnotation);
+                anno.on('updateAnnotation', updateAnnotation);
+            }
+        }
+
+
+        function activateSelection() {
+            console.log("activateSelection mode");
+            $('#btnActivateSelectionMode').attr('disabled', 'disabled');
+            anno.setDrawingTool('rect');
+            anno.disableEditor = true;
+            @*anno.on('createSelection', createSelection);*@
+        }
+
+        function deactivateSelection() {
+            console.log("deactivateSelection mode");
+            $('#btnActivateSelectionMode').removeAttr('disabled');
+            $("#btnCreatePolygon").hide();
+            anno.disableEditor = false;
+            anno.setDrawingTool('polygon');
+            Annotorious.BetterPolygon(anno);
+            @*anno.on('createSelection', function (selection) { });*@
+        }
+
+        async function createSelection(selection) {
+            console.log('createSelection');
+            if ($("#btnActivateSelectionMode").is(':disabled'))
+                $("#btnCreatePolygon").show();
+        }
+
+        function createAnnotation(annotation, overrideId) {
+            console.log("createAnnotation -> " + JSON.stringify(createAnnotation));
+            var tag = "";
+            if (annotation.body.length > 0) {
+                tag = annotation.body[0].value;
+            }
+            var url = "/api/AnnotatorHelper/RegisterAnnotation?imageId=" + "@Model.Id" + "&isNew=true&datasetId=" + "@Model.DatasetId";
+            console.log("createAnnotation -> id:" + annotation.id + " label:" + tag + " annotation:" + annotation.target.selector.value + " url:" + url);
+            $.ajax({
+                url: url,
+                type: "POST",
+                data: JSON.stringify(annotation),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function () {
+                    console.log("createAnnotation posted");
+                    numberOfAnnotation = numberOfAnnotation + 1;
+                }
+            });            
+            $('#textNotDetect').hide();
+        }
+
+        function deleteAnnotation(annotation) {
+            var tag = "";
+            if (annotation.body.length > 0) {
+                tag = annotation.body[0].value;
+            }
+            var url = "/api/AnnotatorHelper/deleteAnnotation";
+            console.log("deleteAnnotation -> id:" + annotation.id + " label:" + tag + " annotation:" + annotation.target.selector.value + " url:" + url);
+            $.ajax({
+                url: url,
+                type: "POST",
+                data: JSON.stringify(annotation),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function () {
+                    console.log("deleteAnnotation posted");
+                }
+            });
+            $('#textNotDetect').hide();
+        }
+        function updateAnnotation(annotation, previous) {
+            var tag = "";
+            if (annotation.body.length > 0) {
+                tag = annotation.body[0].value;
+            }
+            var url = "/api/AnnotatorHelper/RegisterAnnotation?imageId=" + "@Model.Id" + "&isNew=false&datasetId=" + "@Model.DatasetId";
+            console.log("updateAnnotation -> id:" + annotation.id + " label:" + tag + " annotation:" + annotation.target.selector.value + " url:" + url);
+            $.ajax({
+                url: url,
+                type: "POST",
+                data: JSON.stringify(annotation),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function () {
+                    console.log("updateAnnotation posted");
+                }
+            });
+            $('#textNotDetect').hide();
+        }
+
+        function remove() {
+            $('#frm').attr('action', '@Url.Action("Remove","Home")');
+            $("#frm").submit();
+        }
+
+        function backToImageList() {
+            $('#frm').attr('method', 'get');
+            $('#frm').attr('action', '@Url.Action("List","Home")');
+            $("#frm").submit();
+        }
+
+
+        function setupMqtt() {
+            client = mqtt.connect('wss://localhost:9001')
+            var clientId = client.options.clientId;
+            client.on('connect', function () {
+                console.log('Connected --> clientId:' + clientId)
+                client.subscribe(prefixTopic + '/backgroundremoval/result/' + clientId, function (err) {
+                    if (!err) {
+                        console.log(prefixTopic + '/backgroundremoval/result/' + clientId + " is subscribed");
+                    }
+                })
+            })
+
+            client.on('message', function (topic, message) {
+                if (topic == prefixTopic + '/backgroundremoval/result/' + clientId) {
+                    isWaitingBGRemovalResponse = false;
+                    clearBGRemovalResponseTimeout();
+                    // message is Buffer
+                    console.log(message.toString());
+                    var annotationId = '';
+                    if (message.toString() == '')
+                    {
+                        try {
+                            $('#textNotDetect').show();
+                            deactivateSelection();
+                            $("#autopolygon-spinner").hide();
+                            setTimeout(() => {
+                                anno.selectAnnotation(w3cAnnotationModel)
+                            }, 300); // TODO ehance annotation creation so when user cancel editor the annotation will be created
+
+                        } catch (err) {
+                            console.log(err);
+                        }
+                    }
+                    else
+                    {
+                        try {
+                            anno.readonly = false;
+                            anno.cancelSelected();
+                            var pointMsg = message.toString();
+                            console.log("pointMsg -> "  + pointMsg);
+                            @*pointMsg = "117,133 246,133 245,262 117,291";*@
+                            // convert to points
+                            var w3cAnnotationModel = JSON.parse(w3cAnnotationModelStr)
+                            annotationId = "#" + uuidv4();
+                            console.log("annotationId -> " + annotationId);
+                            w3cAnnotationModel.id = annotationId;
+                            w3cAnnotationModel.body[0].value = attributeAll[0];
+                            w3cAnnotationModel.target.selector.value = '<svg><polygon points="' + pointMsg + '"></polygon></svg>';
+                            anno.addAnnotation(w3cAnnotationModel);
+                            createAnnotation(w3cAnnotationModel);
+                            $("#autopolygon-spinner").hide();
+                            deactivateSelection();
+                            setTimeout(() => {
+                                anno.selectAnnotation(w3cAnnotationModel)
+                            }, 300); // TODO ehance annotation creation so when user cancel editor the annotation will be created
+                        } catch (err) {
+                            console.log(err);
+                        }
+                    }
+                }
+            })
+        }
+    </script>
+}
