@@ -1,0 +1,30 @@
+/* Copyright (C) 2020 - 2022 APC Inc. */
+
+.mat-card-cvr{
+    margin: 0 auto;
+    width: 90%;
+ }
+
+ .toolbar-spacer {
+    flex: 1 1 auto;
+  }
+
+  .spinner-wrapper {
+   display: flex;
+   align-items: center;
+   justify-content: flex-start;
+ }
+
+ .example-container {
+	display: flex;
+	flex-direction: column;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+}
+		
+.example-sidenav-container {
+	flex: 1;
+}

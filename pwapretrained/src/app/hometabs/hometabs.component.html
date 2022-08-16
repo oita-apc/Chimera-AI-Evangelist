@@ -1,0 +1,32 @@
+<!-- Copyright (C) 2020 - 2022 APC Inc. -->
+
+<mat-toolbar color="primary">
+    <h1>
+      Image Collection
+    </h1>  
+    <span class="toolbar-spacer"></span>
+    <button mat-button (click)="logout()">Logout</button>
+</mat-toolbar>  
+<!-- <mat-tab-group>
+    <mat-tab label="First">Content 1</mat-tab>
+    <mat-tab label="Second">Content 2</mat-tab>
+    <mat-tab label="Third">Content 3</mat-tab>
+</mat-tab-group>     -->
+<!-- <nav mat-tab-nav-bar>
+    <a mat-tab-link routerLink="/home" [active]="rla.isActive" routerLinkActive #rla="routerLinkActive">Image Collection</a>
+    <a mat-tab-link routerLink="/login" [active]="rla.isActive" routerLinkActive #rla="routerLinkActive">Testing</a>
+</nav> -->
+
+<nav mat-tab-nav-bar class="mat-elevation-z8" >
+    <a
+      mat-tab-link
+      *ngFor="let link of navLinks"
+      routerLink="{{ link.location }}"
+      routerLinkActive
+      #rla="routerLinkActive"
+      [active]="rla.isActive"
+    >
+      <mat-icon>{{ link.icon }}</mat-icon>
+      <span>{{ link.label | uppercase }}</span>
+    </a>
+  </nav>

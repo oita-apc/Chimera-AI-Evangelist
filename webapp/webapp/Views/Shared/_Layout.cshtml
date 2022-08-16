@@ -1,0 +1,124 @@
+﻿
+@* Copyright (C) 2020 - 2022 APC Inc. *@
+
+@using System.Security.Claims
+@using System.Security.Principal
+@using Microsoft.Extensions.Configuration
+@using CorrectionWebApp.Services
+@inject IConfiguration Configuration
+@inject AppService appService
+@{
+    var datasets = await appService.getDatasets();
+}
+<!DOCTYPE html>
+<html lang="jp">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=0" />
+    <title>Chimera AI Evangelist</title>
+    @RenderSection("Styles", required: false)
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/lib/fontawesome/css/font-awesome.css" />
+    <link rel="stylesheet" href="~/lib/chosen/css/bootstrap-chosen.css" />
+    <link rel="icon" href="~/favicon.ico"><!-- 32×32 -->
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container-fluid pb-0 mb-0">
+        <div class="row pb-0 mb-0 align-items-center" style="background-color: #383c4a; height: 55px">
+            <div class="col-auto mr-auto">
+                <h4 style="color: #fff">
+                    @ViewData["Title"]
+                @if (@ViewData["SubTitle"] != null)
+                {
+                    <small>@ViewData["SubTitle"]</small>
+                }
+            </h4>
+        </div>
+        @if (this.User != null && this.User.Identity != null && this.User.Identity.IsAuthenticated)
+        {
+            <div class="col-auto">
+                <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="LogOff" style="color: #fff !important">[@this.User.Identity.Name] Logout</a>
+            </div>
+        }
+    </div>
+</div>
+@if (this.User != null && this.User.Identity != null && this.User.Identity.IsAuthenticated)
+{
+    <nav class="nav border-bottom shadow-sm" style="background-color: rgb(75, 81, 98); margin-bottom:5px">
+        <a class="btn tab" style="color: @(Context.Request.Path.ToString().Contains("Detail") || Context.Request.Path.ToString().Contains("List") ? "white" : "darkgray");" href="@Url.Action("List","Home")">
+            <i aria-hidden="true" class="fa fa-picture-o"></i> Images
+        </a>
+        <a class="btn tab" style="color:  @(Context.Request.Path.ToString().Contains("Dashboard")  ? "white" : "darkgray");" href="@Url.Action("Dashboard","Home")">
+            <i aria-hidden="true" class="fa fa-bar-chart"></i> Statistics
+        </a>
+        <a class="btn tab" style="color:  @(Context.Request.Path.ToString().Contains("Training")  ? "white" : "darkgray");" href="@Url.Action("Training","Home")">
+            <i aria-hidden="true" class="fa fa-graduation-cap"></i> Training
+        </a>
+        <a class="btn tab" style="color:  @(Context.Request.Path.ToString().Contains("Labels")  ? "white" : "darkgray");" href="@Url.Action("Labels","Home")">
+            <i aria-hidden="true" class="fa fa-tags"></i> Labels
+        </a>
+        <a class="btn tab" style="color:  @(Context.Request.Path.ToString().Contains("Documents")  ? "white" : "darkgray");" href="@Url.Action("Documents","Home")">
+            <i aria-hidden="true" class="fa fa-tags"></i> Documents
+        </a>
+        @*
+        <a class="btn tab" style="color:  @(Context.Request.Path.ToString().Contains("Datasets")  ? "white" : "darkgray");" href="@Url.Action("Datasets","Home")">
+            <i aria-hidden="true" class="fa fa-database"></i> Datasets
+        </a>
+        *@
+        <span class="btn tab ml-auto" style="color: white">Dataset:
+            @foreach (var dataset in datasets)
+            {
+                if(dataset.IsActive)
+                {
+                    @*
+                    <option value="@dataset.Id" selected>@(dataset.Id). @Html.Raw(dataset.Name)</option>
+                    *@
+                    <input type="hidden" id="datasetId" value="@dataset.Id" />
+                    @(dataset.Id)@(".") @Html.Raw(dataset.Name)
+                    @*
+                    @(dataset.Id). @Html.Raw(dataset.Name)
+                    *@
+                    break;
+                }
+            }
+        </span>
+    </nav>
+}
+<div class="container-fluid">
+    <main role="main" class="pb-3">
+        @RenderBody()
+    </main>
+</div>
+<footer class="main-footer footer fixed-bottom">
+    <span class="chimera-footer">@Html.Raw(Configuration["ProductAbbreviation"]) Training Version 1.0.0</span>
+    <div class="float-right d-sm-inline-block chimera-footer">
+        <span style="margin-right:5px"><small>Copyright (C) 2020 - 2022</small></span> <img src="~/img/apc-logo.png" width="80" />
+    </div>
+</footer>
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/site.js" asp-append-version="true"></script>
+<script src="~/lib/chosen/js/chosen.jquery.js"></script>
+<script type="text/javascript">
+    $(document).ready(function () {
+        var datasetId = $('#datasetId').val();
+        console.log('datasetId:' + datasetId);
+        if (!datasetId) {
+            // set first item
+            datasetId = '@datasets[0].Id';
+        }
+        setCookie("datasetId", datasetId, 1000);
+        $('#datasetId').change(function () {
+            console.log("datasetId:" + this.value);
+            setCookie("datasetId", this.value, 1000);
+            // reload the page
+            location.reload();
+        });
+    });
+</script>
+@RenderSection("Scripts", required: false)
+</body>
+</html>

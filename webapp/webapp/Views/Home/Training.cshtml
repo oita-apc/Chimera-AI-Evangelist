@@ -1,0 +1,314 @@
+﻿@* Copyright (C) 2020 - 2022 APC Inc. *@
+
+@using CorrectionWebApp.Models
+@using System.Linq
+@using Microsoft.Extensions.Configuration
+@using CorrectionWebApp.Helper
+@model TrainingViewModel
+@inject IConfiguration Configuration
+@{
+    var datasetType = Model.DatasetType;
+}
+
+<div class="row" @(datasetType == Const.IMAGE_CLASSIFICATION ? "style=display:none" : "")>
+    <div class="col-6">
+        <label class="col-auto col-form-label">Model name:</label>
+        @if (datasetType == Const.OBJECT_DETECTION)
+        {
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" name="modeltype" type="radio" id="faster_rcnn" value="faster_rcnn">
+                <label class="form-check-label" for="faster_rcnn">Faster R-CNN</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" name="modeltype" type="radio" id="detr" value="detr">
+                <label class="form-check-label" for="detr">DETR</label>
+            </div>
+        }
+        else if (datasetType == Const.INSTANCE_SEGMENTATION)
+        {
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" name="modeltype" type="radio" id="mask_rcnn" checked="checked" value="mask_rcnn">
+                <label class="form-check-label" for="mask_rcnn">Mask R-CNN</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" name="modeltype" type="radio" id="pointrend" value="pointrend">
+                <label class="form-check-label" for="pointrend">Mask R-CNN + PointRend</label>
+            </div>
+        }
+    </div>
+</div>
+<div class="form-group row" @(datasetType == Const.IMAGE_CLASSIFICATION ? "style=display:none" : "")>
+    <div class="col-auto">
+        <label class="col-auto col-form-label">Training iterations:</label>
+    </div>
+    <div class="col-1" style="text-align:right">
+        <input id="iterations" class="form-control" value="2000" type="number" min="1" step="1" size="4" required onkeyup="if(this.value<0){this.value= this.value * -1}" />
+    </div>
+    <div>
+        <label class="col-auto col-form-label">epochs</label>
+    </div>
+</div>
+<div class="row">
+    <div class="col-3">
+        <label class="col-auto col-form-label">Training status: <span id="trainingStatus"></span></label>
+    </div>
+    <div class="col-2">
+        <button type="button" id="btnTraining" disabled onclick="startTraining();" class="btn btn-primary">Start Training</button>
+    </div>
+    <div class="col-5">
+        <button type="button" id="btnCancel" onclick="cancelTraining();" class="btn btn-primary" style="display:none">Cancel Training <span id="cancelSpinner" class="spinner-border" style="display:none"></span></button>
+    </div>
+</div>
+<div class="row">
+    <div class="col-5">
+        <progress id="progressbar" style="display:none;width:90%" max="100"></progress>
+    </div>
+</div>
+<div class="row" id="remainingTimeInfoDiv" style="display:none">
+    <div class="col-5">
+        Estimated remaining time: <span id="remainingTimeInfo"></span>
+    </div>
+</div>
+<div class="row">
+    <div class="col-5">
+        <span id="gpuinfo"></span>
+    </div>
+</div>
+<div class="rows mb-3 mt-3">
+    <div class="col-5">
+        <img id="reportImage" class="img-fluid" style="max-height:580px" />
+    </div>
+</div>
+
+@section Scripts
+{
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="~/lib/multi-select-tree-dropdown/dropdowntree.js"></script>
+    <script type="text/javascript">
+        var client = {};
+        var prefixTopic = "@(Configuration["MqttClient:PrefixTopic"])";
+        var defaultIterations = "@(Model.NumberOfData > 100 ? 600 : 300)";
+        var datasetType = "@Model.DatasetType";
+        var isRunning = false;
+        var startTrainingTimeout;
+
+        $(document).ready(function () {
+            // An mqtt variable will be initialized globally
+            setupMqtt();
+
+            if(datasetType !== "@Const.IMAGE_CLASSIFICATION") {
+                // get cookie modeltype
+                if (datasetType === "@Const.OBJECT_DETECTION")                
+                    $("#faster_rcnn").prop("checked", true);
+                else if(datasetType === "@Const.INSTANCE_SEGMENTATION")
+                    $("#mask_rcnn").prop("checked", true);
+                var modeltype = getCookie("modeltype");
+                if (modeltype) {
+                    var obj = $("#" + modeltype)
+                    if (obj.length) {
+                       obj.prop("checked", true);
+                    }
+                }
+
+                $('input[type=radio][name=modeltype]').change(function () {
+                    console.log("modeltype:" + this.value);
+                    setCookie("modeltype", this.value, 1000);
+                });
+            } 
+        });
+
+
+        function startTraining() {
+            $("#btnTraining").disabled = true;
+            $('#btnTraining').attr('disabled', 'disabled');
+            $("#iterations").attr("disabled", "disabled");
+            if(datasetType !== "@Const.IMAGE_CLASSIFICATION")
+                $('input[name=modeltype]').attr("disabled", true);
+            $("#reportImage").attr("src", '')
+            $("#trainingStatus").html("[<b>RUNNING</b>]");
+            $("#progressbar").removeAttr("value");
+            $("#progressbar").show();
+            $("#gpuinfo").html("");
+            var imageSize = 256;
+            var batchsize = 2;
+            var numberOfIterations = $("#iterations").val();
+            if (!numberOfIterations)
+                numberOfIterations = defaultIterations;
+            var modelType = "";
+            if (datasetType === "@Const.IMAGE_CLASSIFICATION") {
+                modelType = "resnetv2";
+                imageSize = 256;
+                batchsize = 8;
+            } else {
+                modelType = $('input[name=modeltype]:checked').val();
+                imageSize = 512;
+                batchsize = 2;
+            }
+            var datasetId = getCookie("datasetId");
+
+            var cmdTrainingTopic = prefixTopic + '/starttrain/' + datasetId + '/' + numberOfIterations + '/' + imageSize + '/' + batchsize + '/' + modelType;
+            console.log("topic:" + cmdTrainingTopic)
+
+            var getJsonApiUrl = "/api/ImageUploader/JsonDataset?datasetId=" + datasetId;
+            if (datasetType === "@Const.IMAGE_CLASSIFICATION")
+                getJsonApiUrl = "/api/ImageUploader/JsonDatasetResnetV2?datasetId=" + datasetId;
+            var jsonData;
+            $.get(getJsonApiUrl, function (data, status) {
+                jsonData = data;
+                $.post("@Url.Action("StartTraining", "Home")", { imageSize: imageSize, modeltype: modelType, datasetId: datasetId }, function (data2, status) {
+                    client.publish(cmdTrainingTopic, JSON.stringify(jsonData))
+                });
+            });
+
+            startTrainingTimeout = setTimeout(() => {
+                if(!isRunning && jsonData) {
+                    console.log("send startTraining again just in-case previous command is failed")
+                    client.publish(cmdTrainingTopic, JSON.stringify(jsonData))
+                }
+            }, 10000);
+        }
+
+        function cancelTraining() {
+            clearStartTrainingTimeout();
+            $("#btnCancel").disabled = true;
+            $("#cancelSpinner").show();
+            var modelType = "";
+            if (datasetType === "@Const.IMAGE_CLASSIFICATION")
+                modelType = "resnetv2";
+            else
+                modelType = $('input[name=modeltype]:checked').val();
+            client.publish(prefixTopic + '/canceltrain/command' + '/' + modelType, "cancel")
+        }
+
+        function clearStartTrainingTimeout() {
+            if (startTrainingTimeout)
+                clearTimeout(startTrainingTimeout);
+        }
+
+        function setupMqtt() {
+            client = mqtt.connect('wss://localhost:9001')
+            client.on('connect', function () {
+                console.log('Connected')
+                client.subscribe(prefixTopic + '/trainstatus', function (err) {
+                    if (!err) {
+                        console.log(prefixTopic + '/trainstatus' + " is subscribed");
+                    }
+                })
+                client.publish(prefixTopic + '/trainstatusrequest', 'Hello mqtt')
+                client.subscribe(prefixTopic + '/trainreport', function (err) {
+                    if (!err) {
+                        console.log(prefixTopic + '/trainreport' + " is subscribed");
+                    }
+                })
+                client.subscribe(prefixTopic + '/canceltrain/result', function (err) {
+                    if (!err) {
+                        console.log(prefixTopic + '/canceltrain/result' + " is subscribed");
+                    }
+                })
+            })
+
+            client.on('message', function (topic, message) {
+                if (topic == prefixTopic + '/trainstatus') {
+                    // message is Buffer
+                    console.log(message.toString());
+                    try {
+                        var obj = JSON.parse(message.toString());
+                        var status = obj.status.toUpperCase();
+                        if (status === "IDLE" || status === "COMPLETED") {
+                            clearStartTrainingTimeout();
+                            isRunning = false;
+                            $("#trainingStatus").html("[<b>" + status + "</b>]");
+                            $("#btnTraining").disabled = false;
+                            $('#btnTraining').removeAttr('disabled');
+                            $("#iterations").removeAttr("disabled");
+                            $("#progressbar").hide();
+                            $("#btnCancel").hide();
+                            $("#remainingTimeInfoDiv").hide();
+                            if (datasetType !== "@Const.IMAGE_CLASSIFICATION")
+                                $('input[name=modeltype]').attr("disabled", false);
+
+                            if (status === "COMPLETED") {
+                                $.post("@Url.Action("CompleteTraining", "Home")", { modelType: obj.model_type, datasetId: obj.dataset_id }, function (data, status) {
+                                    console.log("training result: " + data + " Status: " + status);
+                            });                            
+                            } else {
+                                if (obj.model_type && obj.dataset_id && obj.finish_date) {
+                                    $.post("@Url.Action("CompleteTraining", "Home")", { modelType: obj.model_type, datasetId: obj.dataset_id, finishDate: obj.finish_date}, function (data, status) {
+                                        console.log("training result: " + data + " Status: " + status);
+                                    });
+                                    @*
+                                    $.post("@Url.Action("CancelTraining", "Home")", {modelType: obj.model_type, datasetId: obj.dataset_id}, function (data, status) {
+                                        console.log("training result: " + data + " Status: " + status);
+                                    });
+                                    *@
+                                }
+                            }                            
+                        } else if (status === "RUNNING") {
+                            clearStartTrainingTimeout();
+                            isRunning = true;
+                            $("#btnTraining").disabled = true;
+                            $('#btnTraining').attr('disabled', 'disabled');
+                            $("#iterations").attr("disabled", "disabled");
+                            $("#trainingStatus").html("[<b>" + status + "</b>]");
+                            $("#progressbar").show();
+                            $("#btnCancel").show();
+                            $("#remainingTimeInfoDiv").show();
+                            var numberOfIterations = parseInt(obj.max_iterations);
+                            $("#iterations").val(numberOfIterations);
+
+                            var progress = parseInt(obj.progress)
+                            if (progress != 0) {
+                                $("#progressbar").val(progress);
+                                $("#progressbar").html(obj.progress + "%");
+                            }
+                            if (obj.remain_time && obj.remain_time != '') {
+                                var remainingTimeSec = parseInt(obj.remain_time)
+                                if (remainingTimeSec < 60) {
+                                    $("#remainingTimeInfo").html(remainingTimeSec + " seconds")
+                                } else {
+                                    $("#remainingTimeInfo").html((remainingTimeSec / 60).toFixed(1) + " minutes")
+                                }
+                            } else {
+                                $("#remainingTimeInfo").html("");
+                            }
+                            if(datasetType !== "@Const.IMAGE_CLASSIFICATION")
+                                $('input[name=modeltype]').attr("disabled", true);
+                        }
+                        if (obj.gpuinfo) {
+                            //show gpu info
+                            $("#gpuinfo").html("GPU memory Used:" + obj.gpuinfo.Used
+                                + "  Free:" + obj.gpuinfo.Free
+                            )
+                        }
+                    } catch (err) {
+                        console.log(err);
+                    }
+                } else if (topic == prefixTopic + '/trainreport') {
+                    var data = "data:image/png;base64," + String(message)
+                    console.log(prefixTopic + "/trainreport size:" + data.length)
+                    $("#reportImage").attr("src", data)
+                } else if (topic == prefixTopic + '/canceltrain/result') {
+                    clearStartTrainingTimeout();
+                    isRunning = false;
+                    // training has been cancelled
+                    var obj = JSON.parse(message.toString());
+                    $.post("@Url.Action("CancelTraining", "Home")", { modelType: obj.model_type, datasetId: obj.dataset_id }, function (data, status) {
+                        console.log("training result: " + data + " Status: " + status);
+                    });
+                    $("#btnCancel").hide();
+                    $("#cancelSpinner").hide();
+                    $("#trainingStatus").html("[<b>CANCELLED</b>]");
+                    $("#btnTraining").disabled = false;
+                    $('#btnTraining').removeAttr('disabled');
+                    $("#iterations").removeAttr("disabled");
+                    if (datasetType !== "@Const.IMAGE_CLASSIFICATION")
+                        $('input[name=modeltype]').attr("disabled", false);
+                    $("#progressbar").hide();
+                    $("#remainingTimeInfoDiv").hide();
+
+                }
+
+            })
+        }
+    </script>
+}

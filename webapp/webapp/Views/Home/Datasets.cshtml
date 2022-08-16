@@ -1,0 +1,164 @@
+﻿@* Copyright (C) 2020 - 2022 APC Inc. *@
+
+@using CorrectionWebApp.Models
+@using CorrectionWebApp.Helper
+@using System.Linq
+@model DatasetsModel
+@{
+    var disabled = "";
+}
+
+<div class="row">
+    <div class="col-7">
+        <table class="table">
+            <thead class="thead-light">
+                <tr>
+                    <th style="width:12%">Dataset Id</th>
+                    <th style="width:35%">Dataset Name</th>
+                    <th style="width:30%">Model Type</th>
+                    <th>&nbsp;</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var dataset in Model.Datasets)
+                {
+                    if (dataset.Id <= 3)
+                    {
+                        disabled = " disabled='disabled' ";
+                    }
+                    else
+                    {
+                        disabled = " ";
+                    }
+                    <tr>
+                        <td style="text-align: center;">@(dataset.Id)</td>
+                        <td>
+                            <input type="text" maxlength="30" id="dataset-name-@(dataset.Id)" required
+                                    value="@dataset.Name" class="form-control" style="width:200px" @disabled />
+                        </td>
+                        <td>
+                            <select class="form-control" readonly="readonly" disabled="disabled">
+                                <!option value="@Const.IMAGE_CLASSIFICATION" @(dataset.Type == Const.IMAGE_CLASSIFICATION ? "selected" : "")>Image Classification</!option>
+                                <!option value="@Const.OBJECT_DETECTION" @(dataset.Type == Const.OBJECT_DETECTION ? "selected" : "")>Object Detection</!option>
+                                <!option value="@Const.INSTANCE_SEGMENTATION" @(dataset.Type == Const.INSTANCE_SEGMENTATION ? "selected" : "")>Image Segmentation</!option>
+                            </select>
+                            @*<span class="form-control" readonly> @(dataset.getModelTypeLongName())</span>*@
+                        </td>
+                        <td>
+                            @if (dataset.Id > 3)
+                            {
+                                <form action="@Url.Action("UpdateDataset","Home")" id="frmUpdate@(dataset.Id)" method="post" style="display: inline" role="form" data-toggle="validator">
+                                <input type="hidden" id="hidden-dataset-id-@(dataset.Id)" name="Id" />
+                                <input type="hidden" id="hidden-dataset-name-@(dataset.Id)" name="Name" required />
+                                <button type="button" class="btn btn-info" onclick="updateDataset('@dataset.Id');" style="margin-right:10px">Update</button>
+                                </form>
+                                @if (dataset.IsActive)
+                                {
+                                    <span class="badge badge-warning" style="padding-left:15px; padding-right:15px; padding-top:10px; padding-bottom:10px">ACTIVE</span>
+                                } else { 
+                                    <button type="button" class="btn btn-danger" onclick="showDeleteDatasetConfirmation('@dataset.Id', '@dataset.Name');">Delete</button>
+                                }
+                            } else if (dataset.IsActive)
+                            {
+                                <span class="badge badge-warning" style="padding-left:15px; padding-right:15px; padding-top:10px; padding-bottom:10px">ACTIVE</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+<!--
+@if (Model.Datasets.Count < 10)
+    {
+<div class="row">
+    <div class="col-3">
+        <button class="btn btn-primary" type="button" onclick="showNewDatasetForm();">Add New Dataset</button>
+    </div>
+</div>
+    }
+-->
+
+<div class="modal fade" id="confirm-delete" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5>Delete Confirmation</h5>
+            </div>
+            <div class="modal-body">
+                <p>
+                    Are you sure to delete dataset <span id="dataset-name-for-delete"></span>?
+                    <br/>
+                    Note: It will delete the annotations not the images.
+                </p>
+                
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <form method="post" action="@Url.Action("DeleteDataset","Home")">
+                    <button class="btn btn-danger btn-ok" type="submit">Delete</button>
+                    <input id="tobe-deleted-dataset-id" name="Id" type="hidden" />
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="new-dataset" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <form method="post" id="frm-new-dataset" role="form" data-toggle="validator" action="@Url.Action("CreateDataset","Home")">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5>New Dataset</h5>
+                </div>
+                <div class="modal-body">
+
+                    <div class="row form-group">
+                        <label class="col-4 col-form-label margin-right">Dataset Name</label>
+                        <input type="text" required maxlength="64" id="dataset-name-frm" name="Name" class="form-control" style="width:200px" />
+                    </div>
+                    <div class="row form-group">
+                        <label class="col-4 col-form-label margin-right">Model Type</label>
+                        <select class="form-control" style="width:200px" name="Type">
+                            <option value="@Const.IMAGE_CLASSIFICATION" )>Image Classification</option>
+                            <option value="@Const.OBJECT_DETECTION" )>Object Detection</option>
+                            <option value="@Const.INSTANCE_SEGMENTATION" )>Image Segmentation</option>
+                        </select>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    <button class="btn btn-danger btn-ok" type="submit">Submit</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts
+{
+    <script type="text/javascript">
+
+        function showDeleteDatasetConfirmation(datasetId, datasetName) {
+            $("#tobe-deleted-dataset-id").val(datasetId);
+            $("#dataset-name-for-delete").text(datasetId + ' ' + datasetName);
+            $("#confirm-delete").modal("show");
+        }
+
+        function showNewDatasetForm() {
+            $("#new-dataset").modal("show");
+        }
+
+        function updateDataset(datasetId) {
+            $("#hidden-dataset-id-" + datasetId).val(datasetId);
+            $("#hidden-dataset-name-" + datasetId).val($("#dataset-name-" + datasetId).val());
+            if ($("#hidden-dataset-name-" + datasetId).val().length > 0) {
+                $("#frmUpdate" + datasetId).submit();
+            } else {
+                $("#dataset-name-" + datasetId).addClass('is-invalid');
+            }
+        }
+    </script>
+}

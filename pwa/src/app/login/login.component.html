@@ -1,0 +1,30 @@
+<!-- Copyright (C) 2020 - 2022 APC Inc. -->
+
+<mat-toolbar color="primary">
+  <h1>Chimera AI Evangelist</h1>
+</mat-toolbar>  
+<div class="mat-card-cvr">
+<mat-card>
+    <mat-card-content>
+      <form [formGroup]="form" (ngSubmit)="onSubmit()">
+        <h2>Sign in</h2>
+        <mat-error *ngIf="loginInvalid">
+          The User ID or Password is  incorrect. Please try again.
+        </mat-error>
+        <mat-form-field class="full-width-input">
+          <input matInput placeholder="User ID" formControlName="username" required>
+          <mat-error>
+            Please fill out User Id.
+          </mat-error>
+        </mat-form-field>
+        <mat-form-field class="full-width-input">
+          <input matInput type="password" placeholder="Password" formControlName="password" required>
+          <mat-error>
+            Please fill out Password.
+          </mat-error>
+        </mat-form-field>
+        <button mat-raised-button color="primary">LOGIN</button>
+      </form>
+    </mat-card-content>
+</mat-card>
+</div>

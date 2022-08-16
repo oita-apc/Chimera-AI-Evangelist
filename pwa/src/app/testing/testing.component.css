@@ -1,0 +1,65 @@
+/* Copyright (C) 2020 - 2022 APC Inc. */
+
+.mat-card-cvr{
+  margin: 0 auto;
+  width: 90%;
+}
+
+.model-type{
+  margin: 0 auto;
+  width: 90%;
+  border-radius: 10px;
+  border: 2px solid #73AD21;
+  padding: 2px; 
+
+}
+.model-type-title {
+  width: 90%;
+  margin: 0 auto;
+  margin-top: 5px;
+}
+
+.toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+.spinner-wrapper {
+ display: flex;
+ align-items: center;
+ justify-content: flex-start;
+}
+
+.info {
+  margin: 0 auto;
+  width: 80%;
+  color: blue;
+}
+
+.viewer-content {
+  /* background-color: black; */
+  width: 100%;
+}
+
+img {
+  /* Setup our image so it keeps aspect ratio, and is vertically centered */
+  display: block;
+  max-height:100%;
+  max-width:98%;
+  margin: auto;   /* margin: auto ensures image is horizontally centered */
+  /* Below transformation ensures image is centered vertically*/
+  position: relative;
+}
+
+.example-container {
+	display: flex;
+	flex-direction: column;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+}
+
+.example-sidenav-container {
+	flex: 1;
+}

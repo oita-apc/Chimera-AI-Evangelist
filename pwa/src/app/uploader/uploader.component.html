@@ -1,0 +1,61 @@
+<!-- Copyright (C) 2020 - 2022 APC Inc. -->
+
+<mat-toolbar color="primary">
+    <button mat-icon-button class="example-icon" (click)="gotoHome()">
+        <mat-icon>keyboard_backspace</mat-icon>
+      </button>
+    <h1>
+        Image Collection
+    </h1>  
+    <span class="toolbar-spacer"></span>
+    <button mat-button (click)="logout()">LOGOUT</button>
+</mat-toolbar>
+<div class="mat-card-files">
+    <mat-card style="margin-top:10px;">
+            <mat-card-content>
+                Click button below to choose image file(s).
+            </mat-card-content>
+            <mat-card-actions >
+                <div class="spinner-wrapper">
+                    <button type="button" mat-raised-button (click)="fileInput.click()">Choose Image File(s)</button>
+                    <input hidden (change)="onFileSelected()" multiple #fileInput 
+                        accept="image/x-png,image/jpeg" type="file" id="file">
+                    <button mat-button color="primary"
+                        [disabled]="!this.btnUploadEnabled"
+                        (click)="uploadFiles()">
+                            <mat-icon>file_upload</mat-icon>
+                            Upload
+                    </button>
+                    <span *ngIf="errorMsg != ''" style="color: red;" [innerHTML]="errorMsg"></span>
+                    <!-- <span *ngIf="progressInfos && uploadFinishCount >= progressInfos.length  && uploadFinishCount > 0"><b>FINISHED</b></span>                 -->
+                    <mat-spinner *ngIf="progressInfos && uploadFinishCount < progressInfos.length " mode="indeterminate" color="primary" [diameter]="25">                    
+                    </mat-spinner>
+                    <mat-icon *ngIf="progressInfos && uploadFinishCount >= progressInfos.length  && uploadFinishCount > 0" [color]=" uploadErrorCount == 0 ? 'primary' : 'warn'">
+                        done_all
+                    </mat-icon>
+                    <br/>
+                </div>
+                <button style="margin-top: 10px;" *ngIf="uploadErrorCount > 0" mat-button color="warn" (click)="retry()">
+                    <mat-icon>autorenew</mat-icon>
+                    Retry
+                </button>
+            </mat-card-actions>
+    </mat-card>    
+</div>   
+  
+<div *ngIf="progressInfos.length > 0" class="mat-card-list-files">
+    <mat-card style="margin-top:10px;">
+            <mat-card-content>
+                <span><b>Upload Image(s) List</b></span>
+                <div *ngFor="let progressInfo of progressInfos" class="mb-2">
+                    <span>{{ progressInfo.fileName }}</span> 
+                    <span *ngIf="progressInfo.uploadedBefore" style="font-weight: bold;"> Already uploaded before </span>
+                    <span *ngIf="!progressInfo.uploadedBefore"> ({{ progressInfo.value }}%) </span>
+                    <span *ngIf="progressInfo.error" style="color: red;" >ERROR</span>
+                    <div class="progress">                        
+                        <mat-progress-bar mode="determinate" value={{progressInfo.value}}></mat-progress-bar>
+                    </div>
+                </div>                    
+            </mat-card-content> 
+    </mat-card>    
+</div>

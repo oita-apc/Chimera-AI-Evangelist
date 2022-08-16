@@ -1,0 +1,120 @@
+<div class="example-container">
+  <mat-toolbar color="primary" class="example-toolbar">
+    <button mat-icon-button (click)="sidenav.toggle()"><mat-icon>menu</mat-icon></button>
+    <h1>Chimera AI Evangelist</h1>
+    <span class="toolbar-spacer"></span>
+    <button mat-button (click)="logout()">Logout</button>
+  </mat-toolbar>
+
+  <mat-sidenav-container class="example-sidenav-container">
+<nav mat-tab-nav-bar class="mat-elevation-z8" >
+  <a
+    mat-tab-link
+    *ngFor="let link of navLinks"
+    routerLink="{{ link.location }}"
+    routerLinkActive
+    #rla="routerLinkActive"
+    [active]="rla.isActive"
+  >
+    <mat-icon>{{ link.icon }}</mat-icon>
+    <span style="margin-left:5px;">{{ link.label }}</span>
+  </a>
+</nav> 
+<div class="mat-card-cvr" style="margin-top:20px;">
+  <mat-card>
+              Open Camera to take a picture and detect
+          <mat-card-actions>
+              <div class="spinner-wrapper">
+                  <button mat-button color="primary" [disabled]="isProcessing" (click)="fileInput.click()">
+                      <mat-icon>camera_alt</mat-icon>
+                      OPEN CAMERA
+                  </button>
+                  <input hidden (change)="onFileSelected0()"  #fileInput 
+                      accept="image/*" capture="camera" type="file" id="file">
+                  <mat-spinner  
+                      mode="indeterminate" 
+                      *ngIf="isProcessing "
+                      [color]="primary" 
+                      [diameter]="25"></mat-spinner>
+              </div>                                                              
+          </mat-card-actions>
+  </mat-card>    
+</div>
+<div class="mat-card-cvr" style="margin-top:5px;">
+  <mat-card>
+              Open Album to choose a picture and detect
+          <mat-card-actions>
+              <div class="spinner-wrapper">
+                  <button mat-button color="primary" [disabled]="isProcessing" (click)="fileInput1.click()">
+                      <mat-icon>photo</mat-icon>
+                      OPEN ALBUM
+                  </button>
+                  <input hidden (change)="onFileSelected1()"  #fileInput1 
+                    accept="image/x-png,image/jpeg" type="file" id="file1">
+                  <mat-spinner  
+                      mode="indeterminate" 
+                      *ngIf="isProcessing1"
+                      [color]="primary" 
+                      [diameter]="25"></mat-spinner>
+              </div>                                                              
+          </mat-card-actions>
+  </mat-card>    
+</div>
+
+<div class="model-type-title">
+  <span>Image Classification</span>
+</div>
+<div class="model-type" style="margin-top:5px;">
+  <input type="radio" value="resnetv2" [ngModel]="modeltype" (change)="onItemChange($event.target.value)">
+  <span> ResnetV2 </span>     
+</div>  
+
+<div class="model-type-title">
+  <span>Object Detection</span>
+</div>
+<!-- Copyright (C) 2020 - 2022 APC Inc. -->
+
+<div class="model-type">
+    <input type="radio" value="faster_rcnn" [ngModel]="modeltype" (change)="onItemChange($event.target.value)">
+    <span> Faster R-CNN </span>     
+    <input type="radio" value="detr"  [ngModel]="modeltype" (change)="onItemChange($event.target.value)">
+    <span> DETR </span>
+</div>
+<div class="model-type-title">
+  <span>Image Segmentation</span>
+</div>
+<div class="model-type">
+    <input type="radio" value="mask_rcnn"   [ngModel]="modeltype" (change)="onItemChange($event.target.value)">
+    <span> Mask R-CNN </span>
+    <input type="radio" value="pointrend"  [ngModel]="modeltype" (change)="onItemChange($event.target.value)">
+    <span> Mask R-CNN + PointRend </span>
+</div>    
+<div class="info" style="margin-top: 5px;">
+  <span>{{detectionTime}}</span>
+  <div>
+      <span>{{detectedLabel}} {{detectionScore}}</span>
+  </div>
+</div>
+
+
+<canvas id="myCanvas">
+    Your browser does not support the HTML5 canvas tag.</canvas>
+
+    <mat-sidenav #sidenav>
+      <mat-nav-list>
+        <a
+        mat-list-item
+        *ngFor="let link of sideLinks"
+        routerLink="{{ link.location }}"
+        routerLinkActive
+        #rla="routerLinkActive"
+        [active]="rla.isActive"
+      >
+        <mat-icon>{{ link.icon }}</mat-icon>
+        <span style="margin-left:5px;">{{ link.label | uppercase }}</span>
+      </a>
+      </mat-nav-list>
+    </mat-sidenav>
+  </mat-sidenav-container>
+
+</div>

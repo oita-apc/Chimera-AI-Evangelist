@@ -1,0 +1,131 @@
+﻿@* Copyright (C) 2020 - 2022 APC Inc. *@
+
+@using CorrectionWebApp.Models
+@using CorrectionWebApp.Helper
+@using System.Linq
+@model ImageListModel
+@{
+    var totalPage = Model.TotalCount / Model.SearchImage.PageSize + (Model.TotalCount % Model.SearchImage.PageSize == 0 ? 0 : 1);
+    var pageNo = Model.SearchImage.PageNo;
+    var numberOfPageNo = 5;
+    var mostLeft = 1;
+    if (pageNo - numberOfPageNo > 0) {
+        mostLeft = pageNo - numberOfPageNo;
+    }
+    var mostRight = totalPage;
+    if (pageNo + numberOfPageNo <= totalPage)
+    {
+        mostRight = pageNo + numberOfPageNo;
+    }
+    if (mostRight - mostLeft < numberOfPageNo * 2)
+    {
+        if (mostLeft == 1)
+        {
+            mostRight = Math.Min(totalPage, mostLeft + numberOfPageNo * 2);
+        } else if (mostRight == totalPage)
+        {
+            mostLeft = Math.Max(1, mostRight - numberOfPageNo * 2);
+        }
+    }
+}
+
+@if (totalPage > 1)
+{
+    <nav aria-label="...">
+        <ul class="paging-vertical-align pagination" style="margin-bottom:0px">
+            <li class="page-item">
+                <a class="page-link" style="color:black" href="#" onclick="gotoPageNo(1);return false;">&lt;&lt;</a>
+            </li>                
+            @if (pageNo == 1)
+            {
+                <li class="page-item disabled">
+                    <a class="page-link" style="width:35px;text-align:center" href="#" tabindex="-1">&lt;</a>
+                </li>
+            }
+            else
+            {
+                    
+                <li class="page-item">
+                    <a class="page-link" style="color:black; width:35px;text-align:center" href="#" onclick="gotoPageNo(@(pageNo-1));return false;">&lt;</a>
+                </li>
+                    
+            }
+
+            @for (var index = 1; index <= totalPage; index++)
+            {
+                if (index == pageNo)
+                {
+                    <li class="page-item active">
+                        <a class="page-link" href="#">@index<span class="sr-only">(current)</span></a>
+                    </li>
+                }
+                else if (index >= mostLeft && index <= mostRight) 
+                {
+                    <li class="page-item">
+                        <a class="page-link" style="color:black" href="#" onclick="gotoPageNo(@index);return false;">@(index)</a>
+                    </li>
+                }                                
+            }
+
+            @if (pageNo == totalPage)
+            {
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" style="width:35px;text-align:center" tabindex="-1">&gt;</a>
+                </li>
+            }
+            else
+            {
+                    
+                <li class="page-item">
+                    <a class="page-link" style="color:black; width:35px;text-align:center" href="#" onclick="gotoPageNo(@(pageNo+1));return false;">&gt;</a>
+                </li>
+                    
+            }
+            <li class="page-item">
+                <a class="page-link" style="color:black" href="#" onclick="gotoPageNo(@(totalPage));return false;">&gt;&gt;</a>
+            </li>
+        </ul>
+    </nav>
+}
+
+
+<script type="text/javascript">
+    function gotoPageNo(pageNo) {
+        var href = window.location.href
+        if (href.indexOf('imgno') >= 0) {
+            href = removeURLParameter(href, 'imgno');
+        }
+        if (href.indexOf('?') === -1) {
+            window.location.href = href + "?pageNo=" + pageNo;
+        }
+        else if (href.indexOf('pageNo') === -1) {
+            window.location.href = href + "&pageNo=" + pageNo;
+        } else {
+            //remove existing parameter pageNo
+            href = href.substring(0, href.indexOf('pageNo'));
+            //add real pageNo
+            window.location.href = href + "pageNo=" + pageNo;
+        }
+    }
+
+    function removeURLParameter(url, parameter) {
+        //prefer to use l.search if you have a location/link object
+        var urlparts = url.split('?');
+        if (urlparts.length >= 2) {
+
+            var prefix = encodeURIComponent(parameter) + '=';
+            var pars = urlparts[1].split(/[&;]/g);
+
+            //reverse iteration as may be destructive
+            for (var i = pars.length; i-- > 0;) {
+                //idiom for string.startsWith
+                if (pars[i].lastIndexOf(prefix, 0) !== -1) {
+                    pars.splice(i, 1);
+                }
+            }
+
+            return urlparts[0] + (pars.length > 0 ? '?' + pars.join('&') : '');
+        }
+        return url;
+    }
+</script>
